@@ -1,0 +1,148 @@
+-- Garden Tower Defense: Ard Hub Minimalist (Android Bulletproof)
+-- Platform: Delta / Any Mobile Executor
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- [1] ANTI-CHEAT HOOK (Safe injection)
+local mt = getrawmetatable(game)
+local oldNamecall = mt.__namecall
+setreadonly(mt, false)
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if method == "Kick" or method == "kick" then return nil end
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- [2] CLEANUP OLD INSTANCES
+if PlayerGui:FindFirstChild("GTD_4080_Mobile") then
+    PlayerGui.GTD_4080_Mobile:Destroy()
+end
+
+-- [3] PURE NATIVE UI (Zero Bloat, High Contrast)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GTD_4080_Mobile"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- Main Window Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 280, 0, 260)
+-- Center anchor for perfect mobile scaling
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Title
+local TitleBar = Instance.new("TextLabel")
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.Position = UDim2.new(0, 0, 0, 0)
+TitleBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TitleBar.TextColor3 = Color3.fromRGB(0, 0, 0)
+TitleBar.TextSize = 18
+TitleBar.Font = Enum.Font.SourceSansBold
+TitleBar.Text = "GTD HUB - DRAG ME"
+TitleBar.Parent = MainFrame
+
+-- [4] FEATURE STATES
+local States = {
+    AutoSkip = false,
+    AutoSpeed = false,
+    AutoCollect = false
+}
+
+-- [5] BUTTON FACTORY
+local function CreateButton(name, yPos, stateKey)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 0, 0) -- Dark Red (OFF)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 16
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = name .. " [OFF]"
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Parent = MainFrame
+
+    btn.MouseButton1Click:Connect(function()
+        States[stateKey] = not States[stateKey]
+        if States[stateKey] then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 100, 0) -- Dark Green (ON)
+            btn.Text = name .. " [ON]"
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+            btn.Text = name .. " [OFF]"
+        end
+    end)
+end
+
+-- Generate Buttons
+CreateButton("Auto Skip Wave", 55, "AutoSkip")
+CreateButton("Auto 2x Speed", 100, "AutoSpeed")
+CreateButton("Auto Collect Drops", 145, "AutoCollect")
+
+-- Close/Unload Button
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0.9, 0, 0, 35)
+CloseBtn.Position = UDim2.new(0.05, 0, 0, 210)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 0, 0)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Text = "X CLOSE SCRIPT X"
+CloseBtn.BorderSizePixel = 1
+CloseBtn.BorderColor3 = Color3.fromRGB(255, 0, 0)
+CloseBtn.Parent = MainFrame
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- [6] BULLETPROOF BACKGROUND PROCESSOR
+-- Uses pcall so if a remote doesn't exist, the script won't crash
+task.spawn(function()
+    while task.wait(0.5) do
+        if States.AutoSkip then
+            pcall(function()
+                local rs = game:GetService("ReplicatedStorage")
+                local skip = rs:FindFirstChild("SkipWave") or rs:FindFirstChild("StartWave")
+                if skip then skip:FireServer() end
+            end)
+        end
+
+        if States.AutoSpeed then
+            pcall(function()
+                local rs = game:GetService("ReplicatedStorage")
+                local speed = rs:FindFirstChild("SetSpeed")
+                if speed then speed:FireServer(2) end
+            end)
+        end
+
+        if States.AutoCollect then
+            pcall(function()
+                local drops = Workspace:FindFirstChild("Drops") or Workspace:FindFirstChild("Coins")
+                if drops and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local root = LocalPlayer.Character.HumanoidRootPart
+                    for _, drop in pairs(drops:GetChildren()) do
+                        if drop:IsA("BasePart") then
+                            drop.CFrame = root.CFrame
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+print("4080: Minimalist Android Hub Stashed & Executed.")
